@@ -16,17 +16,18 @@ const MarketRatesPage = lazy(() => import('../../pages/public/MarketRatesPage'))
 const SeedsCatalogPage = lazy(() => import('../../pages/public/SeedsCatalogPage'));
 const HowItWorksPage = lazy(() => import('../../pages/public/HowItWorksPage'));
 const FeaturesPage = lazy(() => import('../../pages/public/FeaturesPage'));
+const FarmerApp = lazy(() => import('../../mobile/farmer/FarmerApp'));
 
 function HomeRoute() {
   const { user } = useAuth();
+
+  // On native Android/iOS APK: boot directly into FarmerApp
+  if (isNative) return <FarmerApp />;
 
   if (user) {
     if (user.role === 'farmer') return <Navigate to="/farmer" replace />;
     if (user.role === 'manager' || user.role === 'super_admin') return <Navigate to="/manager/dashboard" replace />;
   }
-
-  // On native Android/iOS APK: show the mobile welcome/login screen (NOT the web landing page)
-  if (isNative) return <MobileWelcomePage />;
 
   return <LandingPage />;
 }
@@ -76,6 +77,14 @@ const AllFarmers = lazy(() => import('../../pages/superadmin/AllFarmers'));
 const NotFound = lazy(() => import('../../pages/shared/NotFound'));
 
 export default function AppRouter() {
+  if (isNative) {
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <FarmerApp />
+      </Suspense>
+    );
+  }
+
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
@@ -91,14 +100,7 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ===== FARMER PORTAL (/farmer) ===== */}
-        <Route path="/farmer" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerLayout /></ProtectedRoute>}>
-          <Route index element={<FarmerHome />} />
-          <Route path="crops" element={<CropManagement />} />
-          <Route path="seeds" element={<SeedPurchase />} />
-          <Route path="booking-slots" element={<BookingSlot />} />
-          <Route path="transactions" element={<TransactionHistory />} />
-          <Route path="profile" element={<FarmerProfile />} />
-        </Route>
+        <Route path="/farmer/*" element={<FarmerApp />} />
 
         {/* ===== MANAGER PORTAL (/manager) ===== */}
 

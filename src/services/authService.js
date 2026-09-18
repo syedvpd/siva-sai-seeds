@@ -4,75 +4,18 @@ import platformStorage from '../platform/storage';
 export const authService = {
   // ─── LOGIN AUTHENTICATION ─────────────────────────────────────
   async login(identifier, password) {
-    const cleanId = (identifier || '').trim().toLowerCase();
-    
-    // Quick Demo Accounts for seamless mobile testing
-    if (cleanId === '9123456780' || cleanId === 'farmer@test.com' || cleanId === 'farmer') {
-      const mockUser = {
-        id: 1,
-        uuid: 'a1111111-1111-1111-1111-111111111111',
-        name: 'Ramesh Kumar',
-        phone: '9123456780',
-        email: 'ramesh.farmer@srisivasaiseeds.com',
-        role: 'farmer',
-        status: 'active',
-        first_login: false
-      };
-      const mockFarmerProfile = {
-        id: 1,
-        app_user_id: 1,
-        name: 'Ramesh Kumar',
-        phone: '9123456780',
-        acres_of_land: 8.5,
-        crop_address: 'Kalluru Farm, Plot #14, Kurnool Dist, AP',
-        status: 'active'
-      };
-      await platformStorage.setItem('agro_token', 'mock_token_farmer_ramesh');
-      await platformStorage.setItem('agro_user', JSON.stringify(mockUser));
-      return {
-        token: 'mock_token_farmer_ramesh',
-        user: mockUser,
-        profile: mockFarmerProfile,
-        requirePasswordChange: false
-      };
-    }
-
-    if (cleanId === '8888888888' || cleanId === 'manager@test.com' || cleanId === 'manager') {
-      const mockUser = {
-        id: 2,
-        uuid: 'b2222222-2222-2222-2222-222222222222',
-        name: 'Suresh Reddy (Field Manager)',
-        phone: '8888888888',
-        email: 'suresh.manager@srisivasaiseeds.com',
-        role: 'manager',
-        status: 'active',
-        first_login: false
-      };
-      await platformStorage.setItem('agro_token', 'mock_token_manager_suresh');
-      await platformStorage.setItem('agro_user', JSON.stringify(mockUser));
-      return {
-        token: 'mock_token_manager_suresh',
-        user: mockUser,
-        profile: mockUser,
-        requirePasswordChange: false
-      };
-    }
-
-    // NOTE: All mock login shortcuts have been removed.
-    // Authentication goes through Supabase only.
-
-    let resolvedEmail = identifier;
-    const isEmail = identifier.includes('@');
+    let resolvedEmail = (identifier || '').trim();
+    const isEmail = resolvedEmail.includes('@');
 
     try {
       if (!isEmail) {
-        // Resolve phone to email first
+        // Resolve phone to email via auth-api edge function
         const { data: resolveData, error: resolveError } = await supabase.functions.invoke('auth-api', {
-          body: { action: 'resolvePhoneToEmail', payload: { phone: identifier } }
+          body: { action: 'resolvePhoneToEmail', payload: { phone: resolvedEmail } }
         });
 
         if (resolveError || resolveData?.error || !resolveData?.success) {
-          throw new Error(resolveError?.message || resolveData?.error || 'Failed to resolve phone number.');
+          throw new Error(resolveError?.message || resolveData?.error || 'Failed to find an account with this mobile number.');
         }
         resolvedEmail = resolveData.email;
       }
@@ -106,11 +49,11 @@ export const authService = {
         throw new Error('Farmers must log in using their mobile number.');
       }
 
-      // Use profile as the source of truth for status (profiles table is canonical)
+      // Use profile as the source of truth for status
       const userStatus = profile?.status || dbUser?.status;
       if (userStatus && userStatus !== 'active') {
         await supabase.auth.signOut();
-        throw new Error(`Account status is ${userStatus}. Awaiting admin approval.`);
+        throw new Error(`Account status is ${userStatus}. Awaiting approval.`);
       }
 
       // Save token and user info via platform storage for persistence on mobile + web
@@ -133,34 +76,8 @@ export const authService = {
         requirePasswordChange: (profile?.first_login ?? dbUser?.first_login) === true
       };
     } catch (err) {
-      console.warn('[AuthService] Network or backend error, logging in with offline demo farmer account:', err.message);
-      const mockUser = {
-        id: 1,
-        uuid: 'a1111111-1111-1111-1111-111111111111',
-        name: 'Ramesh Kumar (Farmer)',
-        phone: identifier || '9123456780',
-        email: 'ramesh.farmer@srisivasaiseeds.com',
-        role: 'farmer',
-        status: 'active',
-        first_login: false
-      };
-      const mockFarmerProfile = {
-        id: 1,
-        app_user_id: 1,
-        name: 'Ramesh Kumar (Farmer)',
-        phone: identifier || '9123456780',
-        acres_of_land: 8.5,
-        crop_address: 'Kalluru Farm, Kurnool Dist, AP',
-        status: 'active'
-      };
-      await platformStorage.setItem('agro_token', 'mock_offline_token');
-      await platformStorage.setItem('agro_user', JSON.stringify(mockUser));
-      return {
-        token: 'mock_offline_token',
-        user: mockUser,
-        profile: mockFarmerProfile,
-        requirePasswordChange: false
-      };
+      console.error('[AuthService] Login failed:', err.message);
+      throw err;
     }
   },
 

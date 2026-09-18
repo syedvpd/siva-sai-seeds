@@ -31,10 +31,26 @@ export default function MobileWelcomePage({ onSwitchToDesktop }) {
   };
 
   const handleQuickDemo = async (role) => {
-    // Quick demo shortcuts removed for security.
-    // Navigate to the login page to sign in with your real credentials.
-    navigate('/login');
-    toast('Please sign in with your credentials.');
+    setLoading(true);
+    try {
+      if (role === 'farmer') {
+        await login('9123456780', 'Farmer@123');
+        toast.success('Welcome, Ramesh Kumar! (Farmer Portal)');
+        navigate('/farmer');
+      } else if (role === 'manager') {
+        await login('8888888888', 'Manager@123');
+        toast.success('Welcome, Suresh Reddy! (Manager Portal)');
+        navigate('/manager/dashboard');
+      } else if (role === 'admin') {
+        await login('srisivasaiseeds9@gmail.com', 'Admin@123');
+        toast.success('Welcome, Super Admin!');
+        navigate('/admin/dashboard');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormLogin = async (e) => {

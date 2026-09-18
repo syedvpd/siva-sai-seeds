@@ -21,26 +21,35 @@ function NativeBridge() {
     // 2. Register native deep link routing (srisivasaiseeds://)
     const cleanupDeepLink = registerDeepLinkListener(navigate);
 
-    // 3. Register network status listener
+    // 3. Register network status listener — only toast on real changes,
+    //    NOT on the initial "connected" state at app startup.
+    let wasOffline = false; // track previous state — start assuming online
+
     const cleanupNetwork = platformNetwork.addListener((status) => {
       if (!status.connected) {
-        toast.error('No internet connection. Working in offline preview mode.', {
+        // Just went offline
+        wasOffline = true;
+        toast.error('No internet connection.', {
           id: 'network-status',
-          duration: 5000,
+          duration: 0, // stay until reconnected
         });
-      } else {
-        toast.success('Connected to network.', {
+      } else if (wasOffline) {
+        // Was offline, now back online — dismiss error and show once
+        wasOffline = false;
+        toast.dismiss('network-status');
+        toast.success('Back online!', {
           id: 'network-status',
           duration: 3000,
         });
       }
+      // If connected from the start (wasOffline=false), do nothing — no toast
     });
 
     return () => {
       cleanupDeepLink();
       cleanupNetwork();
     };
-  }, [navigate]);
+  }, []); // ← empty array: register once at mount, never re-run
 
   // 4. Register hardware back button listener responding to route changes
   useEffect(() => {

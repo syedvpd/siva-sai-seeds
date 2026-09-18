@@ -15,7 +15,11 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिंदी' },
 ];
 
-// Demo account shortcuts removed for security — use real credentials to log in.
+const DEMO_ACCOUNTS = [
+  { label: 'Demo Super Admin', phone: 'srisivasaiseeds9@gmail.com', password: 'Admin@123', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800' },
+  { label: 'Demo Manager', phone: '8888888888', password: 'Manager@123', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' },
+  { label: 'Demo Farmer', phone: '9123456780', password: 'Farmer@123', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' },
+];
 
 export default function Login() {
   const { t, i18n } = useTranslation();
